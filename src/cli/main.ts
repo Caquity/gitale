@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 
 import { checkpointToDocument } from "../core/contract.js";
 import { StoryWorkspace } from "../core/workspace.js";
@@ -12,9 +12,10 @@ import {
   writeViewerSession,
   writeViewerSettings,
 } from "../agent/viewer-session.js";
-import { stopGitale } from "../agent/bootstrap.js";
+import { bootstrapGitale, stopGitale } from "../agent/bootstrap.js";
 import { validateStatus, type NodeStatus } from "../core/types.js";
 import { createViewerServer } from "../viewer/server.js";
+import { diagnoseGitale, formatDoctorReport, type AgentKind } from "../doctor.js";
 
 export interface GitaleResult {
   readonly exitCode: number;
@@ -35,6 +36,7 @@ Commands:
   gitale lineage
   gitale status
   gitale viewer
+  gitale doctor
 
 Gitale saves only explicit Story Workspace output; ordinary external Agent
 conversation is not automatically captured.
@@ -61,9 +63,11 @@ export function runGitale(argv: readonly string[]): GitaleResult {
         return lineage(arguments_);
       case "status":
         return status(arguments_);
+      case "doctor":
+        return doctor(arguments_);
       default:
         throw new Error(
-          `unknown command ${command ?? ""}; use init, stop, checkpoint, amend, fork, show, lineage, or status`,
+          `unknown command ${command ?? ""}; use init, stop, checkpoint, amend, fork, show, lineage, status, viewer, or doctor`,
         );
     }
   } catch (error) {
@@ -74,6 +78,14 @@ export function runGitale(argv: readonly string[]): GitaleResult {
 
 export async function runGitaleAsync(argv: readonly string[]): Promise<GitaleResult> {
   const [command, ...arguments_] = argv;
+  if (command === "init") {
+    try {
+      return await initAsync(arguments_);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { exitCode: 2, stdout: "", stderr: `gitale: ${message}\n` };
+    }
+  }
   if (command !== "stop") {
     return runGitale(argv);
   }
@@ -205,6 +217,36 @@ function init(argv: readonly string[]): GitaleResult {
   const workspaceId = optionalString(values["workspace-id"]);
   const store = FileStoryStore.initialize(workspaceRoot, workspaceId);
   return success(store.readManifest());
+}
+
+async function initAsync(argv: readonly string[]): Promise<GitaleResult> {
+  const { values, positionals } = parseArgs({
+    args: [...argv],
+    options: {
+      workspace: workspaceOption,
+      "workspace-id": { type: "string" },
+      host: { type: "string", default: "127.0.0.1" },
+      port: { type: "string" },
+    },
+    allowPositionals: true,
+    strict: true,
+  });
+  if (positionals.length > 0) {
+    throw new Error("init does not accept positional arguments");
+  }
+  const port = values.port === undefined ? undefined : Number(stringValue(values.port));
+  if (port !== undefined && (!Number.isInteger(port) || port < 0 || port > 65535)) {
+    throw new Error("--port must be an integer between 0 and 65535");
+  }
+  const workspaceId = optionalString(values["workspace-id"]);
+  return success(
+    await bootstrapGitale({
+      workspaceRoot: stringValue(values.workspace),
+      ...(workspaceId === undefined ? {} : { workspaceId }),
+      host: stringValue(values.host),
+      ...(port === undefined ? {} : { port }),
+    }),
+  );
 }
 
 function checkpoint(argv: readonly string[]): GitaleResult {
@@ -443,6 +485,36 @@ function status(argv: readonly string[]): GitaleResult {
   return success(checkpointToDocument(workspace.updateStatus(nodeId, statusValue as NodeStatus)));
 }
 
+function doctor(argv: readonly string[]): GitaleResult {
+  const { values, positionals } = parseArgs({
+    args: [...argv],
+    options: {
+      workspace: workspaceOption,
+      agent: { type: "string" },
+      json: { type: "boolean", default: false },
+    },
+    allowPositionals: true,
+    strict: true,
+  });
+  if (positionals.length > 0) {
+    throw new Error("doctor does not accept positional arguments");
+  }
+  const agentValue = optionalString(values.agent);
+  if (agentValue !== undefined && agentValue !== "codex" && agentValue !== "claude-code") {
+    throw new Error("--agent must be codex or claude-code");
+  }
+  const report = diagnoseGitale({
+    workspaceRoot: stringValue(values.workspace),
+    ...(agentValue === undefined ? {} : { agent: agentValue as AgentKind }),
+  });
+  return {
+    exitCode: report.ok ? 0 : 1,
+    stdout:
+      values.json === true ? `${JSON.stringify(report, null, 2)}\n` : formatDoctorReport(report),
+    stderr: "",
+  };
+}
+
 function stringValue(value: string | boolean | undefined): string {
   if (typeof value !== "string" || value.length === 0) {
     throw new Error("a required non-empty string option is missing");
@@ -466,6 +538,16 @@ function successText(value: string): GitaleResult {
   return { exitCode: 0, stdout: value, stderr: "" };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (isMainModule()) {
   process.exitCode = await main();
+}
+
+function isMainModule(): boolean {
+  const entrypoint = process.argv[1];
+  if (entrypoint === undefined) return false;
+  try {
+    return realpathSync(entrypoint) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return entrypoint === fileURLToPath(import.meta.url);
+  }
 }

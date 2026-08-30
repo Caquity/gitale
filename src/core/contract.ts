@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { Ajv } from "ajv";
 
+import { packageResource } from "../runtime/resources.js";
 import { InvalidCheckpointError } from "./errors.js";
 import {
   freezeCheckpoint,
@@ -37,7 +38,7 @@ export interface StoryCheckpointDocument {
 }
 
 const schema = JSON.parse(
-  readFileSync(new URL("../../schema/story-checkpoint.schema.json", import.meta.url), "utf8"),
+  readFileSync(packageResource("schema", "story-checkpoint.schema.json"), "utf8"),
 ) as object;
 const validator = new Ajv({ allErrors: true }).compile(schema);
 

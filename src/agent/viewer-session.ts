@@ -14,6 +14,7 @@ import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 
 import { BootstrapError } from "../core/errors.js";
+import { packageCliPath, packageRoot } from "../runtime/resources.js";
 
 export interface ViewerSession {
   readonly pid: number;
@@ -44,7 +45,7 @@ export interface ViewerStopResult {
 
 export interface ViewerSessionOptions {
   readonly workspaceRoot: string;
-  readonly projectRoot: string;
+  readonly projectRoot?: string;
   readonly host?: string;
   readonly port?: number;
 }
@@ -59,7 +60,8 @@ export const DEFAULT_VIEWER_PORT = 3000;
 
 export async function ensureViewerSession(options: ViewerSessionOptions): Promise<ViewerSession> {
   const workspaceRoot = resolve(options.workspaceRoot);
-  const projectRoot = resolve(options.projectRoot);
+  const projectRoot =
+    options.projectRoot === undefined ? packageRoot : resolve(options.projectRoot);
   const host = options.host ?? "127.0.0.1";
   const sessionPath = join(workspaceRoot, ".story", "viewer-session.json");
   const existing = readPersistedSession(sessionPath);
@@ -75,7 +77,10 @@ export async function ensureViewerSession(options: ViewerSessionOptions): Promis
     removeIfPresent(sessionPath);
   }
 
-  const cliPath = join(projectRoot, "dist", "cli", "main.js");
+  const cliPath =
+    options.projectRoot === undefined
+      ? packageCliPath()
+      : join(projectRoot, "dist", "cli", "main.js");
   if (!existsSync(cliPath)) {
     throw new BootstrapError(`Gitale build is missing at ${cliPath}; run npm run build first`);
   }

@@ -13,6 +13,7 @@ import {
 export interface BootstrapOptions {
   readonly workspaceRoot?: string;
   readonly projectRoot?: string;
+  readonly workspaceId?: string;
   readonly host?: string;
   readonly port?: number;
 }
@@ -39,15 +40,14 @@ export interface StopResult {
 
 export async function bootstrapGitale(options: BootstrapOptions = {}): Promise<BootstrapResult> {
   const workspaceRoot = resolve(options.workspaceRoot ?? process.cwd());
-  const projectRoot = resolve(options.projectRoot ?? process.cwd());
   const manifestPath = join(workspaceRoot, ".story", "workspace.json");
   const created = !existsSync(manifestPath);
   const store = created
-    ? FileStoryStore.initialize(workspaceRoot)
+    ? FileStoryStore.initialize(workspaceRoot, options.workspaceId)
     : FileStoryStore.open(workspaceRoot);
   const viewer = await ensureViewerSession({
     workspaceRoot,
-    projectRoot,
+    ...(options.projectRoot === undefined ? {} : { projectRoot: options.projectRoot }),
     ...(options.host === undefined ? {} : { host: options.host }),
     ...(options.port === undefined ? {} : { port: options.port }),
   });
