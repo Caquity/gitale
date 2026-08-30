@@ -19,6 +19,7 @@ export class InvalidViewerRevisionError extends Error {
 
 export interface ViewerTreeNode {
   readonly nodeId: string;
+  readonly title: string;
   readonly parentNodeId: string | null;
   readonly status: NodeStatus;
   readonly userIntent: string;
@@ -66,6 +67,7 @@ export class ReadOnlyStoryViewer {
         : projectNodeRevision(currentNode, selectedRevision);
     const tree = this.workspace.listNodes().map((node) => ({
       nodeId: node.nodeId,
+      title: storyTitle(node.storyContent, node.nodeId),
       parentNodeId: node.parentNodeId,
       status: node.status,
       userIntent: node.userIntent,
@@ -90,6 +92,19 @@ export class ReadOnlyStoryViewer {
   render(selectedNodeId?: string, revisionNumber?: number): string {
     return renderViewerHtml(this.snapshot(selectedNodeId, revisionNumber));
   }
+}
+
+function storyTitle(storyContent: string, fallback: string): string {
+  const lines = storyContent.split(/\r?\n/);
+  const heading = lines.find((line) => /^#{1,6}\s+\S/.test(line.trim()));
+  if (heading !== undefined) {
+    return heading
+      .trim()
+      .replace(/^#{1,6}\s+/, "")
+      .replace(/\s+#+$/, "")
+      .trim();
+  }
+  return fallback;
 }
 
 function toViewerRevision(revision: StoryRevision, isCurrent: boolean): ViewerRevision {

@@ -21,19 +21,27 @@ export function renderViewerHtml(snapshot: ViewerSnapshot): string {
   <title>Gitale Story Checkpoint Workspace</title>
   <style>
     :root { color-scheme: light; font-family: ui-sans-serif, system-ui, sans-serif; }
-    body { margin: 0; background: #f6f3ed; color: #27251f; }
-    header { padding: 1.4rem 2rem; border-bottom: 1px solid #d8d0c2; background: #fffdf8; }
-    .layout { display: grid; grid-template-columns: minmax(16rem, 24rem) 1fr; min-height: calc(100vh - 5rem); }
-    aside { padding: 1.5rem; border-right: 1px solid #d8d0c2; background: #faf8f2; }
-    main { padding: 2rem clamp(1.5rem, 5vw, 5rem); max-width: 55rem; }
-    .tree, .tree ul { list-style: none; margin: 0; padding-left: 1rem; }
-    .tree { padding-left: 0; }
-    .tree li { margin: .45rem 0; }
-    .node-link { display: inline-block; padding: .45rem .6rem; border: 1px solid #a69e91; border-radius: .5rem; color: inherit; text-decoration: none; background: #fffdf8; }
-    .node-link.status-candidate { border-style: dashed; }
+    body { display: flex; flex-direction: column; height: 100vh; margin: 0; overflow: hidden; background: #f6f3ed; color: #27251f; }
+    header { flex: 0 0 auto; padding: 1.4rem 2rem; border-bottom: 1px solid #d8d0c2; background: #fffdf8; }
+    .layout { display: grid; grid-template-columns: minmax(16rem, 24rem) minmax(0, 1fr); min-height: 0; flex: 1 1 auto; }
+    aside { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1.5rem; border-right: 1px solid #d8d0c2; background: #faf8f2; }
+    main { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 2rem clamp(1.5rem, 5vw, 5rem); max-width: 55rem; }
+    .tree, .tree ul { list-style: none; margin: 0; padding: 0; }
+    .tree { padding-left: .2rem; }
+    .tree ul { margin-left: .7rem; padding-left: 1.15rem; border-left: 2px solid #d8d0c2; }
+    .tree li { position: relative; margin: .3rem 0; }
+    .tree ul > li::before { content: ""; position: absolute; top: 1.05rem; left: -1.15rem; width: 1.05rem; border-top: 2px solid #d8d0c2; }
+    .node-link { display: flex; align-items: center; gap: .5rem; min-width: 0; padding: .4rem .45rem; border-radius: .45rem; color: inherit; text-decoration: none; }
+    .node-link:hover, .node-link:focus-visible { background: #f0e9da; outline: none; }
     .node-link.status-abandoned { opacity: .55; }
-    .node-link.current-path { box-shadow: 0 0 0 2px #b8955a inset; }
-    .node-link.selected { background: #efe0bc; }
+    .node-link.current-path { background: #f3ead4; }
+    .node-link.selected { background: #e8d6ad; box-shadow: 0 0 0 1px #b8955a inset; }
+    .graph-dot { flex: 0 0 auto; width: .7rem; height: .7rem; border: 2px solid #806a40; border-radius: 50%; background: #faf8f2; }
+    .node-link.status-accepted .graph-dot { border-color: #4d6c50; background: #4d6c50; }
+    .node-link.status-abandoned .graph-dot { border-color: #8c8274; background: #8c8274; }
+    .node-link.status-candidate .graph-dot { border-style: dashed; }
+    .node-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .node-link small { flex: 0 0 auto; margin-left: auto; color: #766e61; font-size: .72rem; }
     .status { border-radius: 999px; padding: .16rem .5rem; font-size: .8rem; }
     .status-candidate { border: 1px dashed #806a40; }
     .status-accepted { border: 1px solid #4d6c50; }
@@ -50,23 +58,61 @@ export function renderViewerHtml(snapshot: ViewerSnapshot): string {
     dt { color: #766e61; } dd { margin: 0; }
     code { display: block; overflow-wrap: anywhere; padding: .8rem; background: #f0ece3; border-radius: .4rem; }
     .eyebrow { color: #8a6c38; letter-spacing: .12em; font-size: .75rem; }
-    @media (max-width: 700px) { .layout { display: block; } aside { border-right: 0; border-bottom: 1px solid #d8d0c2; } }
+    @media (max-width: 700px) { .layout { display: flex; flex-direction: column; } aside { flex: 0 0 38vh; border-right: 0; border-bottom: 1px solid #d8d0c2; } main { flex: 1 1 auto; } }
   </style>
 </head>
 <body>
   <header><strong>Gitale</strong><span> · 本地只读故事产物</span></header>
   <div class="layout">
-    <aside><h2>故事路线</h2><ul class="tree">${treeHtml}</ul>
+    <aside id="story-sidebar"><h2>故事路线</h2><ul class="tree">${treeHtml}</ul>
       <p><span class="status status-candidate">candidate</span> 新生成</p>
       <p><span class="status status-accepted">accepted</span> 当前采用</p>
       <p><span class="status status-abandoned">abandoned</span> 保留但放弃</p>
     </aside>
-    <main>${detailHtml}</main>
+    <main id="story-main">${detailHtml}</main>
   </div>
   <script>
     (() => {
+      const sidebar = document.querySelector("#story-sidebar");
+
+      const renderLocation = async (href, push) => {
+        try {
+          const response = await fetch(href, { headers: { Accept: "text/html" } });
+          if (!response.ok) throw new Error("Viewer navigation failed");
+          const nextDocument = new DOMParser().parseFromString(await response.text(), "text/html");
+          const nextSidebar = nextDocument.querySelector("#story-sidebar");
+          const nextMain = nextDocument.querySelector("#story-main");
+          const currentMain = document.querySelector("#story-main");
+          if (!sidebar || !nextSidebar || !nextMain || !currentMain) throw new Error("Viewer layout unavailable");
+          const sidebarScrollTop = sidebar.scrollTop;
+          sidebar.innerHTML = nextSidebar.innerHTML;
+          sidebar.scrollTop = sidebarScrollTop;
+          currentMain.replaceWith(nextMain);
+          document.title = nextDocument.title;
+          if (push) {
+            const nextUrl = new URL(href, window.location.href);
+            window.history.pushState({}, "", nextUrl.pathname + nextUrl.search);
+          }
+        } catch {
+          window.location.assign(href);
+        }
+      };
+
+      document.addEventListener("click", (event) => {
+        const target = event.target instanceof Element ? event.target.closest("a[href]") : null;
+        if (!(target instanceof HTMLAnchorElement)) return;
+        const nextUrl = new URL(target.href, window.location.href);
+        if (nextUrl.origin !== window.location.origin || nextUrl.pathname !== "/") return;
+        event.preventDefault();
+        void renderLocation(nextUrl.href, true);
+      });
+      window.addEventListener("popstate", () => void renderLocation(window.location.href, false));
       const events = new EventSource("/events");
-      events.addEventListener("workspace-change", () => window.location.reload());
+      events.addEventListener("workspace-change", () => void renderLocation(window.location.href, false));
+      const selected = document.querySelector(".node-link.selected");
+      if (selected && new URLSearchParams(window.location.search).has("node")) {
+        requestAnimationFrame(() => selected.scrollIntoView({ block: "nearest" }));
+      }
     })();
   </script>
 </body>
@@ -83,7 +129,7 @@ function renderTreeNode(
   const nested = (children.get(node.nodeId) ?? [])
     .map((child) => renderTreeNode(child, children))
     .join("");
-  return `<li><a class="${classes.join(" ")}" href="/?node=${encodeURIComponent(node.nodeId)}">${escapeHtml(node.nodeId)} <small>${escapeHtml(node.status)}</small></a>${nested ? `<ul>${nested}</ul>` : ""}</li>`;
+  return `<li><a class="${classes.join(" ")}" href="/?node=${encodeURIComponent(node.nodeId)}" data-node-id="${escapeHtml(node.nodeId)}" aria-label="查看节点 ${escapeHtml(node.nodeId)}"><span class="graph-dot" aria-hidden="true"></span><span class="node-label">${escapeHtml(node.title)}</span><small>${escapeHtml(node.status)}</small></a>${nested ? `<ul>${nested}</ul>` : ""}</li>`;
 }
 
 function renderNode(
