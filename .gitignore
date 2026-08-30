@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+.story/
+!examples/
+!examples/demo/
+!examples/demo/.story/
+!examples/demo/.story/**
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+**/__pycache__/
+*.py[cod]

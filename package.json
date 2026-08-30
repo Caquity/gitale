@@ -1,0 +1,42 @@
+{
+  "name": "gitale",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Local, agent-agnostic Story Checkpoint Workspace",
+  "type": "module",
+  "main": "./dist/index.js",
+  "files": [
+    "dist",
+    "schema",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "gitale": "dist/cli/main.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint src",
+    "format": "prettier --write src schema scripts *.json *.js .github/**/*.yml",
+    "format:check": "prettier --check src schema scripts *.json *.js .github/**/*.yml"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.16.0",
+    "@types/node": "^22.10.0",
+    "eslint": "^9.16.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0"
+  }
+}

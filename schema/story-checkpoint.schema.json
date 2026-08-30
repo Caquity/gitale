@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gitale.local/schema/story-checkpoint.schema.json",
+  "title": "Gitale Story Checkpoint",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "node_id",
+    "parent_node_id",
+    "status",
+    "user_intent",
+    "story_content",
+    "created_at",
+    "context_snapshot"
+  ],
+  "properties": {
+    "node_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "parent_node_id": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["candidate", "accepted", "abandoned"]
+    },
+    "user_intent": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "story_content": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "created_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{3})?Z$"
+    },
+    "context_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ancestor_node_ids", "branch_node_ids"],
+      "properties": {
+        "ancestor_node_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        },
+        "branch_node_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        }
+      }
+    },
+    "run_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent": { "type": "string", "minLength": 1 },
+        "run_id": { "type": "string", "minLength": 1 },
+        "duration_ms": { "type": "integer", "minimum": 0 },
+        "metadata": { "type": "object" }
+      }
+    },
+    "state_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["advisory", "data"],
+      "properties": {
+        "advisory": { "const": true },
+        "data": { "type": "object" }
+      }
+    }
+  }
+}
