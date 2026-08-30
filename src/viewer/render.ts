@@ -52,6 +52,8 @@ export function renderViewerHtml(snapshot: ViewerSnapshot): string {
     dt { color: #766e61; } dd { margin: 0; }
     code { display: block; overflow-wrap: anywhere; padding: .8rem; background: #f0ece3; border-radius: .4rem; }
     .eyebrow { color: #8a6c38; letter-spacing: .12em; font-size: .75rem; }
+    .copy-status { position: fixed; z-index: 10; pointer-events: none; padding: .42rem .72rem; border: 3px solid #36543a; border-radius: .4rem; background: #fffdf8; box-shadow: 0 .25rem .8rem rgb(39 37 31 / 28%); color: #29442d; font-size: .86rem; font-weight: 800; letter-spacing: .02em; animation: copy-status-fade 1s ease-out forwards; }
+    @keyframes copy-status-fade { from { opacity: 1; } to { opacity: 0; } }
     @media (max-width: 700px) { .layout { display: flex; flex-direction: column; } aside { flex: 0 0 38vh; border-right: 0; border-bottom: 1px solid #d8d0c2; } main { flex: 1 1 auto; } }
   </style>
 </head>
@@ -69,6 +71,8 @@ export function renderViewerHtml(snapshot: ViewerSnapshot): string {
     (() => {
       const sidebar = document.querySelector("#story-sidebar");
       let graphObserver = null;
+      let copyStatusTimer = null;
+      let latestCopyRequest = 0;
 
       const drawWorktreeGraph = () => {
         if (graphObserver !== null) graphObserver.disconnect();
@@ -167,12 +171,76 @@ export function renderViewerHtml(snapshot: ViewerSnapshot): string {
         }
       };
 
+      const copyNodeId = async (nodeId) => {
+        try {
+          if (typeof navigator.clipboard?.writeText === "function") {
+            try {
+              await navigator.clipboard.writeText(nodeId);
+              return true;
+            } catch {
+              // Try the compatibility path below when Clipboard API is unavailable or rejected.
+            }
+          }
+          if (typeof document.execCommand !== "function") return false;
+          const copyField = document.createElement("text" + "area");
+          copyField.value = nodeId;
+          copyField.setAttribute("readonly", "");
+          copyField.setAttribute("aria-hidden", "true");
+          copyField.style.position = "fixed";
+          copyField.style.left = "-9999px";
+          document.body.append(copyField);
+          copyField.focus();
+          copyField.select();
+          let copied = false;
+          try {
+            copied = document.execCommand("copy");
+          } catch {
+            copied = false;
+          }
+          copyField.remove();
+          return copied;
+        } catch {
+          return false;
+        }
+      };
+
+      const showCopyStatus = (message, clientX, clientY) => {
+        if (copyStatusTimer !== null) {
+          window.clearTimeout(copyStatusTimer);
+          copyStatusTimer = null;
+        }
+        const previous = document.querySelector(".copy-status");
+        if (previous instanceof HTMLElement) previous.remove();
+        const status = document.createElement("div");
+        status.className = "copy-status";
+        status.setAttribute("role", "status");
+        status.setAttribute("aria-live", "polite");
+        status.textContent = message;
+        const maxLeft = Math.max(8, window.innerWidth - 160);
+        const maxTop = Math.max(8, window.innerHeight - 40);
+        status.style.left = Math.min(Math.max(clientX + 12, 8), maxLeft) + "px";
+        status.style.top = Math.min(Math.max(clientY + 12, 8), maxTop) + "px";
+        document.body.append(status);
+        copyStatusTimer = window.setTimeout(() => {
+          status.remove();
+          copyStatusTimer = null;
+        }, 1000);
+      };
+
       document.addEventListener("click", (event) => {
         const target = event.target instanceof Element ? event.target.closest("a[href]") : null;
         if (!(target instanceof HTMLAnchorElement)) return;
         const nextUrl = new URL(target.href, window.location.href);
         if (nextUrl.origin !== window.location.origin || nextUrl.pathname !== "/") return;
         event.preventDefault();
+        const nodeId = target.dataset.nodeId;
+        if (target.matches(".node-link[data-node-id]") && nodeId !== undefined) {
+          const copyRequest = ++latestCopyRequest;
+          void copyNodeId(nodeId).then((copied) => {
+            if (copyRequest !== latestCopyRequest) return;
+            showCopyStatus(copied ? "ID copied" : "ID copy failed", event.clientX, event.clientY);
+          });
+        }
         void renderLocation(nextUrl.href, true);
       });
       window.addEventListener("popstate", () => void renderLocation(window.location.href, false));

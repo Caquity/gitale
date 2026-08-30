@@ -53,9 +53,14 @@ npx skills add Caquity/gitale
 ## 初始化一个故事目录
 
 在 Codex 或 Claude Code 中打开你准备保存故事的文件夹，然后明确输入：
-
+Codex
 ```text
-$gitale init
+$gitale init  //codex
+```
+
+Claude Code
+```text
+/gitale init
 ```
 
 初始化完成后，Agent 会返回一个类似 `http://127.0.0.1:3000` 的地址。把这个地址复制到浏览器即可查看故事树。
@@ -67,10 +72,16 @@ $gitale init
 
 
 ## 结束使用
-
+Codex
 ```text
 $gitale stop
 ```
+
+Claude code
+```text
+/gitale stop
+```
+
 
 它只会停止 Gitale 自己记录的 Viewer，不会删除 `.story/`、故事节点、状态或修订历史。下次回到同一个故事目录，再次输入 `$gitale init` 即可继续查看。
 

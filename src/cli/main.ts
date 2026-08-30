@@ -12,7 +12,7 @@ import {
   writeViewerSession,
   writeViewerSettings,
 } from "../agent/viewer-session.js";
-import { bootstrapGitale, stopGitale } from "../agent/bootstrap.js";
+import { bootstrapGitale, restartGitale, stopGitale } from "../agent/bootstrap.js";
 import { validateStatus, type NodeStatus } from "../core/types.js";
 import { createViewerServer } from "../viewer/server.js";
 import { diagnoseGitale, formatDoctorReport, type AgentKind } from "../doctor.js";
@@ -29,6 +29,7 @@ const helpText = `Gitale - local Story Checkpoint Workspace
 Commands:
   gitale init
   gitale stop
+  gitale restart
   gitale checkpoint
   gitale amend
   gitale fork
@@ -67,7 +68,7 @@ export function runGitale(argv: readonly string[]): GitaleResult {
         return doctor(arguments_);
       default:
         throw new Error(
-          `unknown command ${command ?? ""}; use init, stop, checkpoint, amend, fork, show, lineage, status, viewer, or doctor`,
+          `unknown command ${command ?? ""}; use init, stop, restart, checkpoint, amend, fork, show, lineage, status, viewer, or doctor`,
         );
     }
   } catch (error) {
@@ -81,6 +82,14 @@ export async function runGitaleAsync(argv: readonly string[]): Promise<GitaleRes
   if (command === "init") {
     try {
       return await initAsync(arguments_);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { exitCode: 2, stdout: "", stderr: `gitale: ${message}\n` };
+    }
+  }
+  if (command === "restart") {
+    try {
+      return await restart(arguments_);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return { exitCode: 2, stdout: "", stderr: `gitale: ${message}\n` };
@@ -122,6 +131,33 @@ async function stop(argv: readonly string[]): Promise<GitaleResult> {
     throw new Error("stop does not accept positional arguments");
   }
   return success(await stopGitale({ workspaceRoot: stringValue(values.workspace) }));
+}
+
+async function restart(argv: readonly string[]): Promise<GitaleResult> {
+  const { values, positionals } = parseArgs({
+    args: [...argv],
+    options: {
+      workspace: workspaceOption,
+      host: { type: "string", default: "127.0.0.1" },
+      port: { type: "string" },
+    },
+    allowPositionals: true,
+    strict: true,
+  });
+  if (positionals.length > 0) {
+    throw new Error("restart does not accept positional arguments");
+  }
+  const port = values.port === undefined ? undefined : Number(stringValue(values.port));
+  if (port !== undefined && (!Number.isInteger(port) || port < 0 || port > 65535)) {
+    throw new Error("--port must be an integer between 0 and 65535");
+  }
+  return success(
+    await restartGitale({
+      workspaceRoot: stringValue(values.workspace),
+      host: stringValue(values.host),
+      ...(port === undefined ? {} : { port }),
+    }),
+  );
 }
 
 async function startViewer(argv: readonly string[]): Promise<number> {

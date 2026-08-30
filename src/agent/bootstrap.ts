@@ -59,6 +59,17 @@ export async function bootstrapGitale(options: BootstrapOptions = {}): Promise<B
   };
 }
 
+export async function restartGitale(options: BootstrapOptions = {}): Promise<BootstrapResult> {
+  const workspaceRoot = resolve(options.workspaceRoot ?? process.cwd());
+  const manifestPath = join(workspaceRoot, ".story", "workspace.json");
+
+  if (existsSync(manifestPath)) {
+    await stopGitale({ workspaceRoot });
+  }
+
+  return bootstrapGitale({ ...options, workspaceRoot });
+}
+
 export async function stopGitale(options: StopOptions = {}): Promise<StopResult> {
   const workspaceRoot = resolve(options.workspaceRoot ?? process.cwd());
   const store = FileStoryStore.open(workspaceRoot);

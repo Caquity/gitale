@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Gitale 工作流
 
-这是一份用户主动调用的 Skill。只有创作者明确输入 `$gitale ...` 时，才进入下面的工作流。所有命令都必须调用已经安装的 `gitale` 命令；Gitale 命令默认使用当前工作目录，也可以通过 `--workspace <目标工作区>` 指定另一个目录。
+这是一份用户主动调用的 Skill。创作者必须明确输入 `$gitale ...` 才能开始 Gitale 命令流程；成功执行 `$gitale init` 后，本次 Agent 会话还遵循下述会话级引导。所有命令都必须调用已经安装的 `gitale` 命令；Gitale 命令默认使用当前工作目录，也可以通过 `--workspace <目标工作区>` 指定另一个目录。
 
 普通对话、故事讨论、草稿、建议和还没有得到确认的生成结果，都不会被 Gitale 自动捕获、保存或修改。每次写入都必须有清楚的保存意图，并在完成后报告实际结果。
 
@@ -22,6 +22,20 @@ gitale init [--workspace <目标工作区>]
 
 `init` 会创建或复用目标工作区，启动或复用该工作区管理的本地 Viewer。它不会创建 Story Checkpoint，也不会因为初始化而保存故事内容。向创作者报告工作区、节点数量以及 Viewer 地址；如果端口发生调整，也报告最终地址。
 
+## 会话级创作引导
+
+只有 `$gitale init` 成功返回后，才把当前 Agent 会话标记为活跃的 Gitale 创作会话。此后每一条后续回复的末尾都追加一行以 `Gitale 下一步：` 开头的引导；根据当前已知阶段只给出最多两个建议。建议可以是查看节点、保存 `checkpoint`、从选定节点 `fork`、对叶节点 `amend`、打开或继续使用 `Viewer`，以及使用 `$gitale stop` 停止 Viewer。没有足够上下文时，优先建议查看 `Viewer` 或继续准备内容，不要臆测节点状态。
+
+按阶段选择建议，每个阶段最多两项：
+
+- 初始化后或尚未选定节点：建议查看 `Viewer`；已有完整待保存正文时，再建议 `checkpoint`。
+- 已选节点且准备探索另一条路线：建议 `fork`；当前节点是叶节点且创作者要修订时，建议 `amend`。
+- 已完成查看或准备离开：建议使用 `Viewer` 和 `$gitale stop`。
+
+只列出适用项；非叶节点（有后代的节点）不建议 `amend`，并且任何写入命令仍需创作者明确确认。
+
+引导只是下一步提示，不代表已经执行命令，也不改变保存边界：`checkpoint`、`fork` 和 `amend` 仍须先展示完整内容并取得创作者明确的保存或应用确认；普通对话和未确认草稿不会自动保存。`$gitale stop` 只停止由 Gitale 管理的 Viewer；创作者明确用自然语言表示结束 Gitale 创作会话（或同义意图）时，确认会话已结束，之后的回复不再追加 `Gitale 下一步：`。会话引导状态只存在于当前 Agent 的内存中，不写入工作区或新增 CLI 命令；新的 Agent 会话必须再次成功执行 `$gitale init` 才会激活引导。
+
 ## `$gitale stop`
 
 这是有副作用的操作，只把创作者明确输入 `$gitale stop` 视为执行确认。目标工作区明确后运行：
@@ -31,6 +45,16 @@ gitale stop [--workspace <目标工作区>]
 ```
 
 `stop` 只停止该工作区记录的 Gitale Viewer，清理对应的会话记录，并保留全部故事节点、正文、意图和修订历史。没有受 Gitale 管理的 Viewer 时安全结束。不要根据端口猜测进程，也不要停止其他程序。向创作者报告 Viewer 是否停止以及故事节点数量。
+
+## `$gitale restart`
+
+这是有副作用的操作，只把创作者明确输入 `$gitale restart` 视为执行确认。目标工作区明确后运行：
+
+```text
+gitale restart [--workspace <目标工作区>]
+```
+
+`restart` 先按 `$gitale stop` 的安全规则验证并停止该工作区记录的 Viewer，或清理 stale session；随后按 `$gitale init` 的 bootstrap 和端口选择逻辑启动一个新的 Viewer。没有受 Gitale 管理的 Viewer 时，也安全地启动一个。它不会删除或改写任何 Story Checkpoint、正文、意图、status 或 revision；如果 session 元数据不安全、工作区无效或 Viewer 无法启动，必须保持 fail-closed 并报告错误。向创作者报告工作区、节点数量和新的 Viewer 地址。
 
 ## 显式保存 Story Checkpoint
 
