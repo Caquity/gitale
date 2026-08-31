@@ -1,26 +1,23 @@
 # Gitale
+> Gitale 是一个本地的 AI 故事工作区。它把明确要求保存的故事结果整理成可回看的检查点，让你可以继续原路线，也可以从较早的节点另开一条路线。
+> 本项目更多的是对文献、既有项目的探究和实现，任何一次灵感都具有其价值，将追溯性变成可能
 
-## 演示视频
+<video src="https://www.bilibili.com/video/BV1Rctb6GEK9/" controls muted playsinline width="100%"></video>
 
-<video src="https://github.com/Caquity/gitale/releases/download/v0.121/gitale.mp4" controls muted playsinline width="100%"></video>
-
-如果当前 Markdown 阅读器不支持内嵌播放，可[打开演示视频](https://github.com/Caquity/gitale/releases/download/v0.121/gitale.mp4)。
 
 ## 简单介绍
 
-Gitale 面向已经使用 Codex 或 Claude Code、希望探索电影、短剧、动画或互动叙事的创作者。它解决的不是“让模型替人写故事”，而是普通聊天难以保留、比较和回到多条创作路线的问题：AI 负责起草或协助修改，创作者明确决定何时把结果保存为 checkpoint、从哪个节点 fork、是否应用 amendment；最终产品是一套可跨 Agent 安装的本地 CLI、统一的故事文件格式和只读 Viewer。
-
-本次选择将范围收敛在版本化故事 Artifact，而不是实现完整 Story Bible、RAG、模型路由或自动质量评判：这是最短且可实际走通的用户路径。工程上，JSON Schema 与运行时校验约束节点关系和输入，原子 File Store 保留可读的本地数据，fork 隔离路线，叶节点 amendment 追加 revision 并拒绝改写已有后代，loopback Viewer 只读呈现树、正文、状态和历史；这些机制支撑“可保存、可分支、可回看、可追溯”的能力声明，但不等于自动保证文学质量或因果一致性。
-
-AI 在两个层面参与：对创作者，Codex/Claude Code 通过 Gitale Skill 按明确确认边界调用 CLI；对开发，AI 被用于调研、方案收敛、TDD、实现和验证，而代码、测试、OpenSpec artifact 与人工验收共同约束其输出。当前已完成 checkpoint、fork、叶节点 amendment、状态、实时本地 Viewer、节点 ID 复制、跨 Agent Skill 与安装型 CLI；完整的真实 Codex/Claude 互操作和 Viewer 理解性验收仍待人工完成。实际投入未做逐时记录，因此不以提交时间反推或虚构总工时。
-
-Gitale 是本地 AI 故事工作区。它会把你明确要求保存的故事结果整理成可回看的检查点，让你可以继续原路线，也可以从较早的节点另开一条路线；故事内容保存在自己的电脑上。
+- Gitale 面向已经使用 Codex 或 Claude Code 的创作者。它解决普通聊天难以保留、比较和回到多条创作路线的问题。
+- AI 负责起草或协助修改，创作者明确决定何时把结果保存为 checkpoint、从哪个节点 fork、是否应用 amendment；最终产品是一套可跨 Agent 安装的本地 CLI、统一的故事文件格式和只读 Viewer。
+- 本次选择将范围收敛在版本化故事 Artifact，而不是实现完整 Story Bible、RAG、模型路由或自动质量评判：这是最短且可实际走通的用户路径。
+- 工程上，JSON Schema 与运行时校验约束节点关系和输入，原子 File Store 保留可读的本地数据，fork 隔离路线，叶节点 amendment 追加 revision 并拒绝改写已有后代，loopback Viewer 只读呈现树、正文、状态和历史；这些机制支撑“可保存、可分支、可回看、可追溯”的能力声明，但不等于自动保证文学质量或因果一致性。
+- AI 在两个层面参与：
+  - 对创作者，Codex/Claude Code 通过 Gitale Skill 按明确确认边界调用 CLI；
+  - 对开发，AI 被用于调研、方案收敛、TDD、实现和验证，而代码、测试、OpenSpec artifact 与人工验收共同约束其输出。
+- 当前已完成 checkpoint、fork、叶节点 amendment、状态、实时本地 Viewer、节点 ID 复制、跨 Agent Skill 与安装型 CLI。
 
 [演示视频](#演示视频) · [简单介绍](#简单介绍) · [快速开始](#快速开始) · [技术栈与设计选型](#技术栈与设计选型) · [工作方式](#工作方式) · [Roadmap](#roadmap) · [理论依据与边界](#理论依据与边界) · [参考文献](#参考文献)
 
-## 简单介绍
-
-> **面向使用 Codex/Claude Code 探索电影、短剧或互动叙事的创作者，Gitale 用跨 Agent 的本地 CLI、版本化 Story Checkpoint 与只读 Viewer，把 AI 起草、创作者明确保存、分支探索和可追溯修订收敛为一条可实际体验的路径；它不代替模型生成、不管理 API key，也不声称自动判断故事质量。**
 
 ## 技术栈与设计选型
 
