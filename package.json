@@ -31,7 +31,7 @@
     "node": ">=20"
   },
   "bin": {
-    "gitale": "dist/cli/main.js"
+    "gitale": "gitale"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -1,10 +1,37 @@
 # Gitale
 
-Gitale 是一个本地的 AI 故事工作区。它会把你明确要求保存的故事结果整理成可回看的检查点，让你可以继续原路线，也可以从较早的节点另开一条路线；故事内容保存在自己的电脑上。
+## 演示视频
 
-[快速开始](#快速开始) · [工作方式](#工作方式) · [Roadmap](#roadmap) · [理论依据与边界](#理论依据与边界) · [参考文献](#参考文献)
+<video src="https://github.com/Caquity/gitale/releases/download/v0.121/gitale.mp4" controls muted playsinline width="100%"></video>
+
+如果当前 Markdown 阅读器不支持内嵌播放，可[打开演示视频](https://github.com/Caquity/gitale/releases/download/v0.121/gitale.mp4)。
+
+## 简单介绍
+
+Gitale 面向已经使用 Codex 或 Claude Code、希望探索电影、短剧、动画或互动叙事的创作者。它解决的不是“让模型替人写故事”，而是普通聊天难以保留、比较和回到多条创作路线的问题：AI 负责起草或协助修改，创作者明确决定何时把结果保存为 checkpoint、从哪个节点 fork、是否应用 amendment；最终产品是一套可跨 Agent 安装的本地 CLI、统一的故事文件格式和只读 Viewer。
+
+本次选择将范围收敛在版本化故事 Artifact，而不是实现完整 Story Bible、RAG、模型路由或自动质量评判：这是最短且可实际走通的用户路径。工程上，JSON Schema 与运行时校验约束节点关系和输入，原子 File Store 保留可读的本地数据，fork 隔离路线，叶节点 amendment 追加 revision 并拒绝改写已有后代，loopback Viewer 只读呈现树、正文、状态和历史；这些机制支撑“可保存、可分支、可回看、可追溯”的能力声明，但不等于自动保证文学质量或因果一致性。
+
+AI 在两个层面参与：对创作者，Codex/Claude Code 通过 Gitale Skill 按明确确认边界调用 CLI；对开发，AI 被用于调研、方案收敛、TDD、实现和验证，而代码、测试、OpenSpec artifact 与人工验收共同约束其输出。当前已完成 checkpoint、fork、叶节点 amendment、状态、实时本地 Viewer、节点 ID 复制、跨 Agent Skill 与安装型 CLI；完整的真实 Codex/Claude 互操作和 Viewer 理解性验收仍待人工完成。实际投入未做逐时记录，因此不以提交时间反推或虚构总工时。
+
+Gitale 是本地 AI 故事工作区。它会把你明确要求保存的故事结果整理成可回看的检查点，让你可以继续原路线，也可以从较早的节点另开一条路线；故事内容保存在自己的电脑上。
+
+[演示视频](#演示视频) · [简单介绍](#简单介绍) · [快速开始](#快速开始) · [技术栈与设计选型](#技术栈与设计选型) · [工作方式](#工作方式) · [Roadmap](#roadmap) · [理论依据与边界](#理论依据与边界) · [参考文献](#参考文献)
+
+## 简单介绍
+
+> **面向使用 Codex/Claude Code 探索电影、短剧或互动叙事的创作者，Gitale 用跨 Agent 的本地 CLI、版本化 Story Checkpoint 与只读 Viewer，把 AI 起草、创作者明确保存、分支探索和可追溯修订收敛为一条可实际体验的路径；它不代替模型生成、不管理 API key，也不声称自动判断故事质量。**
+
+## 技术栈与设计选型
+
+- **TypeScript + Node.js 20 + npm CLI**：提供 `init`、checkpoint、fork、amend、Viewer 生命周期和诊断命令
+- **JSON Schema + Ajv + 本地 File Store**
+- **Node HTTP + 原生 HTML/CSS/JavaScript + SSE**：Viewer 保持 loopback、只读且无框架依赖；以树概览、详情按需和实时刷新呈现路线，不在浏览器调用模型或写入故事。
+- **Codex/Claude Code canonical Skill**：同一份 Skill 约束显式保存与确认边界，CLI 负责持久化，避免把普通聊天误当作故事 Artifact；不耦合任何模型 SDK 或 API key。
 
 ## 快速开始
+
+> 让 AI Native 承担适配环境等繁杂工作，请准备好可用的 Agent (codex, claude code)
 
 ### 1. 准备工作
 
@@ -23,10 +50,29 @@ npm --version
 
 ### 2. 安装 Gitale
 
+#### 正式 npm 发布后
+
+只有 Gitale 已发布到 npm registry 后，才使用下面的命令。建议安装明确版本；若 npm 找不到该包或版本，停止并检查 GitHub Release/发布说明，不要安装同名替代包。
+
 ```text
-npm install --global gitale
+npm install --global gitale@<发布版本>
 gitale --help
 ```
+
+#### 从 GitHub 源码安装（开发、演示或尚未发布时）
+
+当前适合演示的路径是从源码构建并进行用户级全局安装：
+
+```text
+git clone https://github.com/Caquity/gitale.git
+cd gitale
+npm install
+npm run build
+npm install --global .
+gitale --help
+```
+
+若 `npm install --global .` 因 `/usr/local` 权限失败，应改用用户级 npm prefix，并把其 `bin` 目录加入 shell `PATH`；不要用 `sudo npm install`。本地源码安装会链接到 clone 的目录，因此不要移动或删除该目录；正式 npm 发布后可改用上面的正式安装路径。
 
 ### 3. 安装 Agent Skill
 
@@ -42,6 +88,22 @@ npx skills add Caquity/gitale
 - 选择“项目级”适合只在当前项目中使用。
 
 安装完成后，关闭并重新打开 Codex 或 Claude Code，让它加载新 Skill。
+
+### 4. 交给 Agent 安装
+
+若你已具备 Codex 或 Claude Code，可把下面的 meta-prompt 原样交给 Agent。它要求 Agent 先验证来源、运行环境和最终 CLI，而不是盲目安装：
+
+```text
+请从 https://github.com/Caquity/gitale.git 帮我安装 Gitale，供我在任意故事文件夹中使用。
+
+先检查：Node.js 是否为 20 或更高版本、npm 是否可用、当前是否已存在 gitale 命令，以及 GitHub 仓库的 remote URL 是否准确。不要读取、修改或要求我的模型 API key。
+
+如果 npm registry 中尚无明确的 Gitale 正式发布版本，请使用 GitHub 源码安装：clone 到一个稳定、不准备删除的本地目录，安装依赖，构建，然后进行用户级全局安装。若系统级 npm prefix 没有写权限，不要使用 sudo；改为用户级 npm prefix，并确保该 prefix 的 bin 在 zsh PATH 中。
+
+安装后必须在 Gitale 仓库之外的一个空目录验证 `gitale --help` 和 `gitale doctor`。不要在 Gitale 源码仓库中执行 `gitale init`，不要创建、修改或删除我的故事内容，也不要提交、推送或改写任何 Git 仓库历史。
+
+然后安装 Gitale Skill：`npx skills add Caquity/gitale`。说明我需要重启 Agent 会话才能加载 Skill。最后只报告：安装位置、`gitale` 实际路径、版本、验证结果、需要我手动处理的项目；遇到不确定或高权限操作先询问我。
+```
 
 ```text
 请先显式加载名为 gitale 的 Skill，并确认它已经可用。
