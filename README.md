@@ -2,7 +2,9 @@
 > Gitale 是一个本地的 AI 故事工作区。它把明确要求保存的故事结果整理成可回看的检查点，让你可以继续原路线，也可以从较早的节点另开一条路线。
 > 本项目更多的是对文献、既有项目的探究和实现，任何一次灵感都具有其价值，将追溯性变成可能
 
-<video src="https://www.bilibili.com/video/BV1Rctb6GEK9/" controls muted playsinline width="100%"></video>
+[▶ 完整演示视频](https://www.bilibili.com/video/BV1Rctb6GEK9/)
+
+[简单介绍](#简单介绍) · [快速开始](#快速开始) · [技术栈与设计选型](#技术栈与设计选型) · [工作方式](#工作方式) · [Roadmap](#roadmap) · [理论依据与边界](#理论依据与边界) · [参考文献](#参考文献)
 
 
 ## 简单介绍
@@ -15,8 +17,6 @@
   - 对创作者，Codex/Claude Code 通过 Gitale Skill 按明确确认边界调用 CLI；
   - 对开发，AI 被用于调研、方案收敛、TDD、实现和验证，而代码、测试、OpenSpec artifact 与人工验收共同约束其输出。
 - 当前已完成 checkpoint、fork、叶节点 amendment、状态、实时本地 Viewer、节点 ID 复制、跨 Agent Skill 与安装型 CLI。
-
-[演示视频](#演示视频) · [简单介绍](#简单介绍) · [快速开始](#快速开始) · [技术栈与设计选型](#技术栈与设计选型) · [工作方式](#工作方式) · [Roadmap](#roadmap) · [理论依据与边界](#理论依据与边界) · [参考文献](#参考文献)
 
 
 ## 技术栈与设计选型
